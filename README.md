@@ -5,7 +5,8 @@ An intelligent AI-powered pitch deck generator that creates comprehensive startu
 ## ✨ Features
 
 - **🧠 AI-Powered Content Generation**: Uses OpenAI GPT-4 to create compelling pitch deck content
-- **🔍 Enhanced Web Research**: SerperDevTool integration with clickable source links
+- **🔍 Enhanced Web Research**: SerperDevTool integration with intelligent URL extraction
+- **🔗 Smart Source Detection**: Multiple fallback mechanisms for URL extraction from research text
 - **📝 Comprehensive Form Interface**: Detailed input form for all startup information
 - **🎨 Professional Output**: Structured pitch deck content ready for presentation
 - **⚡ Fast Processing**: Quick generation with real-time progress updates
@@ -13,6 +14,8 @@ An intelligent AI-powered pitch deck generator that creates comprehensive startu
 - **📱 Responsive Design**: Works on desktop and mobile devices
 - **🔗 Interactive Sources**: Clickable links to research sources with enhanced formatting
 - **📊 Visual Research Display**: Card-based layout for research results with domain indicators
+- **🛠️ Advanced Debugging**: Comprehensive logging and debug information for troubleshooting
+- **🔄 Robust Error Handling**: Graceful fallbacks when API sources are unavailable
 
 ## 🛠️ Technology Stack
 
@@ -123,6 +126,30 @@ Pitchdeck-AI/
 - **Professional Output**: High-quality PowerPoint presentations
 - **Organized Results**: Structured file organization and reporting
 - **Smart Link Processing**: Automatic title extraction and domain identification
+
+## 🔗 Advanced URL Extraction System
+
+Our enhanced research system features multiple URL detection methods:
+
+### 📊 **Smart Source Detection**
+- **Primary**: Structured sources from Serper API with full metadata
+- **Secondary**: Intelligent text parsing for URL extraction from research content
+- **Tertiary**: Pattern matching for various citation formats
+
+### 🎯 **Supported URL Patterns**
+- `Source: https://example.com`
+- `(Source: https://example.com)`
+- `Reference: https://example.com`
+- `URL: https://example.com`
+- `**Title** Source: https://example.com`
+- Direct URLs embedded in research text
+
+### 🎨 **Visual Source Indicators**
+- **🟢 Green Border**: Structured sources from API
+- **🔵 Blue Border**: URLs extracted from research text
+- **🟡 Orange Border**: Sources without URLs
+- **Domain Display**: Clean domain names for easy identification
+- **Clickable Links**: All URLs open in new tabs for verification
 
 ## 🚀 Deployment
 
