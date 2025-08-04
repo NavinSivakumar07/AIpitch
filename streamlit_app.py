@@ -356,18 +356,18 @@ def initialize_agents():
             logger.warning("⚠️ Custom modules not available, using minimal fallback")
             # Create minimal fallback objects
             output_manager = type('OutputManager', (), {
-                'save_research': lambda self, *args, **kwargs: None,
-                'save_knowledge_analysis': lambda self, *args, **kwargs: None,
-                'save_content': lambda self, *args, **kwargs: None,
-                'get_output_path': lambda self, *args, **kwargs: "outputs"
+                'save_research': lambda _self, *_args, **_kwargs: None,
+                'save_knowledge_analysis': lambda _self, *_args, **_kwargs: None,
+                'save_content': lambda _self, *_args, **_kwargs: None,
+                'get_output_path': lambda _self, *_args, **_kwargs: "outputs"
             })()
 
             knowledge_agent = type('KnowledgeAgent', (), {
-                'analyze_startup': lambda self, *args, **kwargs: "Knowledge analysis completed in fallback mode."
+                'analyze_startup': lambda _self, *_args, **_kwargs: "Knowledge analysis completed in fallback mode."
             })()
 
             content_agent = type('ContentAgent', (), {
-                'generate_content': lambda self, *args, **kwargs: "Content generated in fallback mode."
+                'generate_content': lambda _self, *_args, **_kwargs: "Content generated in fallback mode."
             })()
 
             logger.info("✅ Fallback agents initialized")
@@ -381,10 +381,10 @@ def initialize_agents():
             logger.error(f"❌ Failed to initialize OutputManager: {e}")
             # Create fallback OutputManager
             output_manager = type('OutputManager', (), {
-                'save_research': lambda self, *args, **kwargs: None,
-                'save_knowledge_analysis': lambda self, *args, **kwargs: None,
-                'save_content': lambda self, *args, **kwargs: None,
-                'get_output_path': lambda self, *args, **kwargs: "outputs"
+                'save_research': lambda _self, *_args, **_kwargs: None,
+                'save_knowledge_analysis': lambda _self, *_args, **_kwargs: None,
+                'save_content': lambda _self, *_args, **_kwargs: None,
+                'get_output_path': lambda _self, *_args, **_kwargs: "outputs"
             })()
             logger.info("✅ Fallback OutputManager created")
 
@@ -396,7 +396,7 @@ def initialize_agents():
             logger.error(f"❌ Failed to initialize KnowledgeAgent: {e}")
             # Create fallback KnowledgeAgent
             knowledge_agent = type('KnowledgeAgent', (), {
-                'analyze_startup': lambda self, *args, **kwargs: "Knowledge analysis completed in fallback mode."
+                'analyze_startup': lambda _self, *_args, **_kwargs: "Knowledge analysis completed in fallback mode."
             })()
             logger.info("✅ Fallback KnowledgeAgent created")
 
@@ -408,7 +408,7 @@ def initialize_agents():
             logger.error(f"❌ Failed to initialize ContentAgent: {e}")
             # Create fallback ContentAgent
             content_agent = type('ContentAgent', (), {
-                'generate_content': lambda self, *args, **kwargs: "Content generated in fallback mode."
+                'generate_content': lambda _self, *_args, **_kwargs: "Content generated in fallback mode."
             })()
             logger.info("✅ Fallback ContentAgent created")
 
@@ -422,9 +422,9 @@ def initialize_agents():
 
         # Last resort: create minimal fallback objects
         try:
-            output_manager = type('OutputManager', (), {'save_research': lambda self, *args, **kwargs: None})()
-            knowledge_agent = type('KnowledgeAgent', (), {'analyze_startup': lambda self, *args, **kwargs: "Fallback analysis"})()
-            content_agent = type('ContentAgent', (), {'generate_content': lambda self, *args, **kwargs: "Fallback content"})()
+            output_manager = type('OutputManager', (), {'save_research': lambda _self, *_args, **_kwargs: None})()
+            knowledge_agent = type('KnowledgeAgent', (), {'analyze_startup': lambda _self, *_args, **_kwargs: "Fallback analysis"})()
+            content_agent = type('ContentAgent', (), {'generate_content': lambda _self, *_args, **_kwargs: "Fallback content"})()
             logger.info("✅ Emergency fallback agents created")
             return True
         except:
@@ -485,12 +485,9 @@ def extract_urls_from_text(text):
 
     return sources
 
-def run_simplified_research(startup_data, research_prompt=None):
+def run_simplified_research(startup_data, _research_prompt=None):
     """Simplified research function that works without CrewAI using direct API calls."""
     try:
-        # Note: research_prompt parameter is kept for compatibility but not used in simplified mode
-        _ = research_prompt  # Acknowledge the parameter to avoid warnings
-
         # Validate startup_data
         if not startup_data or not isinstance(startup_data, dict):
             logger.error("❌ Invalid startup_data provided to research")
@@ -500,10 +497,14 @@ def run_simplified_research(startup_data, research_prompt=None):
         openai_api_key = os.getenv('OPENAI_API_KEY')
         serper_api_key = os.getenv('SERPER_API_KEY')
 
+        logger.info(f"🔑 API Keys check - OpenAI: {'✅' if openai_api_key else '❌'}, Serper: {'✅' if serper_api_key else '❌'}")
+
         if not openai_api_key:
+            logger.error("❌ OPENAI_API_KEY not configured")
             return "Error: OPENAI_API_KEY not configured", [], {"error": "Missing OPENAI_API_KEY"}
 
         if not serper_api_key:
+            logger.error("❌ SERPER_API_KEY not configured")
             return "Error: SERPER_API_KEY not configured", [], {"error": "Missing SERPER_API_KEY"}
 
         # Initialize OpenAI client
@@ -516,14 +517,19 @@ def run_simplified_research(startup_data, research_prompt=None):
         search_queries = [
             f"{startup_name} competitors market analysis",
             f"{industry_type} market size trends 2024",
-            f"{industry_type} industry news recent developments"
+            f"{industry_type} industry news recent developments",
+            f"{startup_name} funding investment news"
         ]
 
         search_results = []
         sources = []
 
-        for query in search_queries:
+        logger.info(f"🔍 Starting search with {len(search_queries)} queries")
+
+        for i, query in enumerate(search_queries, 1):
             try:
+                logger.info(f"🔍 Query {i}/{len(search_queries)}: {query}")
+
                 # Call Serper API directly
                 search_url = "https://google.serper.dev/search"
                 headers = {
@@ -533,59 +539,84 @@ def run_simplified_research(startup_data, research_prompt=None):
                 payload = {'q': query, 'num': 5}
 
                 response = requests.post(search_url, headers=headers, json=payload)
+                logger.info(f"🔍 Serper API response status: {response.status_code}")
+
                 if response.status_code == 200:
                     data = response.json()
+                    logger.info(f"🔍 Response keys: {list(data.keys())}")
 
                     # Extract organic results
                     if 'organic' in data:
-                        for result in data['organic'][:3]:  # Top 3 results
-                            search_results.append({
-                                'title': result.get('title', ''),
-                                'snippet': result.get('snippet', ''),
-                                'link': result.get('link', ''),
-                                'query': query
-                            })
-                            sources.append({
-                                'title': result.get('title', ''),
-                                'url': result.get('link', '')
-                            })
+                        organic_results = data['organic'][:3]  # Top 3 results
+                        logger.info(f"🔍 Found {len(organic_results)} organic results for query {i}")
+
+                        for j, result in enumerate(organic_results):
+                            title = result.get('title', '')
+                            snippet = result.get('snippet', '')
+                            link = result.get('link', '')
+
+                            logger.info(f"🔍 Result {j+1}: Title='{title[:50]}...', Link='{link}'")
+
+                            if link:  # Only add if we have a valid link
+                                search_results.append({
+                                    'title': title,
+                                    'snippet': snippet,
+                                    'link': link,
+                                    'query': query
+                                })
+                                sources.append({
+                                    'title': title,
+                                    'url': link,
+                                    'snippet': snippet
+                                })
+                    else:
+                        logger.warning(f"🔍 No 'organic' key in response for query {i}")
+                else:
+                    logger.error(f"🔍 Serper API error {response.status_code}: {response.text}")
 
             except Exception as e:
                 logger.error(f"Search failed for query '{query}': {e}")
 
+        logger.info(f"🔍 Search completed - Total results: {len(search_results)}, Total sources: {len(sources)}")
+
         if not search_results:
+            logger.error("❌ No search results found")
             return "Error: No search results found", [], {"error": "No search results"}
 
-        # Generate research report using OpenAI
+        # Generate research report using OpenAI with source citations
         research_content = "\n\n".join([
             f"**{result['title']}**\n{result['snippet']}\nSource: {result['link']}"
             for result in search_results
         ])
 
         prompt = f"""
-Based on the following web search results, create a comprehensive market research report for {startup_name} in the {industry_type} industry:
+Based on the following web search results, create a comprehensive market research report for {startup_name} in the {industry_type} industry.
 
+IMPORTANT: Include the exact source URLs in your response using this format: (Source: URL)
+
+Search Results:
 {research_content}
 
 Please provide:
 1. Market Analysis with specific data and sources
-2. Competitor Analysis with company names and sources
+2. Competitor Analysis with company names and sources  
 3. Industry Trends with recent developments and sources
-4. A complete list of all source URLs used
+4. Key findings with supporting evidence
 
-Format each finding as: "Finding (Source: URL)"
+Format each finding as: "Finding details (Source: https://example.com)"
 """
 
         try:
             response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4o-mini",
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=2000,
+                max_tokens=2500,
                 temperature=0.7
             )
 
             research_output = response.choices[0].message.content
 
+            logger.info(f"✅ Research completed successfully - Output: {len(research_output)} chars, Sources: {len(sources)}")
             return research_output, sources, {"search_results": search_results}
 
         except Exception as e:
@@ -1014,6 +1045,21 @@ def run_enhanced_workflow():
                 research_output, research_sources, research_raw_result = run_research_agent_simple(startup_data, research_prompt)
             else:
                 research_output, research_sources, research_raw_result = run_simplified_research(startup_data, research_prompt)
+
+            # Debug: Log research results
+            logger.info(f"🔍 Research completed - Output length: {len(research_output) if research_output else 0}")
+            logger.info(f"🔍 Research sources returned: {len(research_sources) if research_sources else 0}")
+            logger.info(f"🔍 Research sources type: {type(research_sources)}")
+            if research_sources and len(research_sources) > 0:
+                logger.info(f"🔍 First source: {research_sources[0]}")
+
+            # If no sources returned but we have research output, try to extract URLs
+            if research_output and (not research_sources or len(research_sources) == 0):
+                logger.info("🔧 No sources returned from research function, attempting URL extraction...")
+                extracted_sources = extract_urls_from_research_text(research_output)
+                if extracted_sources:
+                    research_sources = extracted_sources
+                    logger.info(f"✅ Extracted {len(extracted_sources)} sources from research text")
         # Ensure research_raw_result is JSON serializable
         def make_json_safe(obj):
             if isinstance(obj, (dict, list, str, int, float, bool)) or obj is None:
@@ -1314,8 +1360,478 @@ def display_processing():
         time.sleep(3)
         st.rerun()
 
+
+
+def enrich_pitch_content(content: str) -> str:
+    """Enrich pitch deck content using LLM to make slides more compelling and detailed."""
+    try:
+        from openai import OpenAI
+
+        openai_api_key = os.getenv('OPENAI_API_KEY')
+        if not openai_api_key:
+            logger.info("No OpenAI API key found, returning original content")
+            return content
+
+        client = OpenAI(api_key=openai_api_key)
+
+        prompt = f"""
+        You are an expert pitch deck consultant and investor advisor. Transform the following pitch deck content into a highly compelling, investor-ready presentation while maintaining the EXACT same slide structure.
+
+        ENHANCEMENT REQUIREMENTS:
+        1. STRUCTURE: Keep exact "Slide X:" format and slide titles - DO NOT CHANGE THESE
+        2. CONTENT DEPTH: Expand each slide with rich, detailed, and compelling content
+        3. INVESTOR APPEAL: Use language that resonates with VCs and angel investors
+        4. DATA & METRICS: Add realistic industry statistics, market data, and financial projections
+        5. STORYTELLING: Create a compelling narrative that flows between slides
+        6. CREDIBILITY: Include specific examples, case studies, and proof points
+        7. URGENCY: Highlight market timing and competitive advantages
+        8. CLARITY: Make complex concepts easy to understand
+        9. PROFESSIONALISM: Use sophisticated business language and terminology
+        10. ACTIONABILITY: Include clear next steps and investment opportunities
+
+        SPECIFIC ENHANCEMENTS TO ADD:
+        - Market size data with TAM/SAM/SOM breakdown
+        - Competitive differentiation with specific advantages
+        - Financial projections with growth metrics
+        - Customer validation and traction evidence
+        - Team credentials and expertise
+        - Technology advantages and IP protection
+        - Revenue model with unit economics
+        - Go-to-market strategy with specific channels
+        - Risk mitigation strategies
+        - Clear funding ask with use of funds
+
+        TONE: Professional, confident, data-driven, compelling, investor-focused
+
+        Original Pitch Deck Content:
+        {content}
+
+        Transform this into a compelling, detailed, investor-ready pitch deck that will capture attention and drive investment decisions. Make each slide rich with content while maintaining the exact structure.
+        """
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=4000,
+            temperature=0.7
+        )
+
+        enriched_content = response.choices[0].message.content
+        logger.info("✅ Pitch deck content successfully enriched with detailed, investor-ready content")
+        return enriched_content if enriched_content else content
+
+    except Exception as e:
+        logger.error(f"Error enriching pitch content: {e}")
+        return content  # Return original content if enrichment fails
+
+def enrich_individual_slide(slide_content: str, slide_title: str, slide_number: int, startup_context: dict = None) -> str:
+    """Enrich individual slide content with targeted prompts based on slide type."""
+    try:
+        from openai import OpenAI
+
+        openai_api_key = os.getenv('OPENAI_API_KEY')
+        if not openai_api_key:
+            return slide_content
+
+        client = OpenAI(api_key=openai_api_key)
+
+        # Create targeted prompts based on slide title/content
+        slide_type_prompts = {
+            "company overview": """
+            Transform this into a compelling company overview that includes:
+            - Clear value proposition and mission statement
+            - Key differentiators and unique selling points
+            - Company stage, founding date, and key milestones
+            - Brief team introduction with credentials
+            - Vision for market transformation
+            """,
+            "problem": """
+            Enhance this problem statement with:
+            - Quantified market pain points with statistics
+            - Real customer quotes and pain examples
+            - Market research data supporting the problem
+            - Cost of the problem to businesses/consumers
+            - Why existing solutions fail to address this
+            """,
+            "solution": """
+            Strengthen this solution description with:
+            - Clear explanation of how it solves the problem
+            - Key features and benefits breakdown
+            - Technology advantages and innovation
+            - Proof of concept or prototype results
+            - Customer validation and early feedback
+            """,
+            "market": """
+            Expand this market analysis with:
+            - TAM/SAM/SOM breakdown with specific numbers
+            - Market growth rates and trends
+            - Target customer segments and personas
+            - Market timing and opportunity window
+            - Regulatory environment and drivers
+            """,
+            "competition": """
+            Enhance competitive analysis with:
+            - Detailed competitor comparison matrix
+            - Competitive advantages and moats
+            - Market positioning and differentiation
+            - Barriers to entry for competitors
+            - Intellectual property and defensibility
+            """,
+            "business model": """
+            Strengthen business model with:
+            - Revenue streams and pricing strategy
+            - Unit economics and key metrics
+            - Customer acquisition cost and lifetime value
+            - Scalability factors and leverage points
+            - Partnership and distribution strategies
+            """,
+            "financial": """
+            Enhance financial projections with:
+            - 3-5 year revenue and growth projections
+            - Key financial metrics and assumptions
+            - Path to profitability timeline
+            - Funding requirements and use of funds
+            - Exit strategy and valuation potential
+            """
+        }
+
+        # Determine slide type based on title
+        slide_type = "general"
+        title_lower = slide_title.lower()
+        for key in slide_type_prompts:
+            if key in title_lower:
+                slide_type = key
+                break
+
+        # Get startup context for personalization
+        company_name = startup_context.get('startup_name', 'the company') if startup_context else 'the company'
+        industry = startup_context.get('industry_type', 'technology') if startup_context else 'technology'
+
+        # Create targeted prompt
+        if slide_type in slide_type_prompts:
+            specific_prompt = slide_type_prompts[slide_type]
+        else:
+            specific_prompt = """
+            Enhance this slide content with:
+            - More detailed and compelling information
+            - Specific data points and metrics
+            - Professional business language
+            - Clear value propositions
+            - Actionable insights
+            """
+
+        prompt = f"""
+        You are an expert pitch deck consultant. Enhance this slide content for {company_name} in the {industry} industry.
+
+        Slide {slide_number}: {slide_title}
+
+        Current Content:
+        {slide_content}
+
+        Enhancement Instructions:
+        {specific_prompt}
+
+        REQUIREMENTS:
+        - Keep the slide focused and concise (2-4 key points max)
+        - Use bullet points for clarity
+        - Include specific numbers, percentages, or data where relevant
+        - Make it investor-ready and compelling
+        - Maintain professional tone
+        - Focus on value creation and market opportunity
+
+        Return only the enhanced slide content, ready for presentation.
+        """
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=800,
+            temperature=0.7
+        )
+
+        enhanced_slide = response.choices[0].message.content
+        logger.info(f"✅ Slide {slide_number} ({slide_title}) successfully enriched")
+        return enhanced_slide if enhanced_slide else slide_content
+
+    except Exception as e:
+        logger.error(f"Error enriching slide {slide_number}: {e}")
+        return slide_content
+
+def create_enhanced_slide_content(slide_title: str, basic_content: str, startup_data: dict, research_sources: list) -> str:
+    """Create enhanced slide content using startup data and research context."""
+    try:
+        from openai import OpenAI
+
+        openai_api_key = os.getenv('OPENAI_API_KEY')
+        if not openai_api_key:
+            return basic_content
+
+        client = OpenAI(api_key=openai_api_key)
+
+        # Extract key information from startup data
+        company_name = startup_data.get('startup_name', 'Our Company')
+        industry = startup_data.get('industry_type', 'Technology')
+        problem = startup_data.get('key_problem_solved', 'Market inefficiencies')
+        solution = startup_data.get('solution_description', 'Innovative technology solution')
+        target_market = startup_data.get('target_market', 'Enterprise customers')
+        funding_amount = startup_data.get('funding_amount', 'Seeking investment')
+        business_model = startup_data.get('business_model', 'SaaS platform')
+
+        # Create context-aware prompt
+        prompt = f"""
+        Create compelling, investor-ready content for this pitch deck slide using the provided startup information and research context.
+
+        STARTUP CONTEXT:
+        - Company: {company_name}
+        - Industry: {industry}
+        - Problem Solved: {problem}
+        - Solution: {solution}
+        - Target Market: {target_market}
+        - Funding: {funding_amount}
+        - Business Model: {business_model}
+        - Research Sources Available: {len(research_sources)}
+
+        SLIDE TO ENHANCE:
+        Title: {slide_title}
+        Current Content: {basic_content}
+
+        ENHANCEMENT REQUIREMENTS:
+        1. Make content specific to {company_name} and the {industry} industry
+        2. Include relevant market data and industry statistics
+        3. Use compelling, investor-focused language
+        4. Add specific metrics, percentages, and data points
+        5. Create urgency and highlight market opportunity
+        6. Show clear value proposition and competitive advantage
+        7. Include credible projections and growth potential
+        8. Make it concise but impactful (3-5 key points max)
+        9. Use professional business terminology
+        10. Focus on ROI and investment attractiveness
+
+        SLIDE-SPECIFIC GUIDELINES:
+        - If this is a problem slide: Quantify the pain points and market size
+        - If this is a solution slide: Highlight unique technology and benefits
+        - If this is a market slide: Include TAM/SAM/SOM and growth rates
+        - If this is a business model slide: Show revenue streams and unit economics
+        - If this is a financial slide: Include projections and funding use
+        - If this is a team slide: Highlight relevant experience and expertise
+        - If this is a competition slide: Show clear differentiation and moats
+
+        Create content that will make investors excited about the opportunity and want to learn more.
+        Return only the enhanced slide content, formatted for presentation.
+        """
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1000,
+            temperature=0.7
+        )
+
+        enhanced_content = response.choices[0].message.content
+        logger.info(f"✅ Enhanced slide content created for: {slide_title}")
+        return enhanced_content if enhanced_content else basic_content
+
+    except Exception as e:
+        logger.error(f"Error creating enhanced slide content: {e}")
+        return basic_content
+
+def extract_urls_from_research_text(research_text: str) -> list:
+    """Extract URLs and source information from research text."""
+    import re
+
+    sources = []
+
+    if not research_text:
+        logger.info("🔍 No research text provided for URL extraction")
+        return sources
+
+    logger.info(f"🔍 Extracting URLs from research text ({len(research_text)} characters)")
+
+    # Pattern 1: Extract URLs with context (title before URL)
+    title_url_pattern = r'(?:\*\*([^*]+)\*\*|([A-Z][^.!?]*?))\s*(?:Source:|URL:|Link:)?\s*(https?://[^\s<>"{}|\\^`\[\]]+[^\s<>"{}|\\^`\[\].,;:!?])'
+    title_url_matches = re.findall(title_url_pattern, research_text, re.IGNORECASE)
+
+    logger.info(f"🔍 Pattern 1 (Title+URL): Found {len(title_url_matches)} matches")
+
+    for match in title_url_matches:
+        title = (match[0] or match[1] or '').strip()
+        url = match[2]
+        if url and url.startswith('http'):
+            sources.append({
+                'title': title if title else f'Research Source from {url.split("/")[2] if "/" in url else url}',
+                'url': url,
+                'snippet': 'Source found in research analysis'
+            })
+
+    # Pattern 2: Simple URL extraction with domain as title
+    url_pattern = r'https?://[^\s<>"{}|\\^`\[\]]+[^\s<>"{}|\\^`\[\].,;:!?]'
+    urls = re.findall(url_pattern, research_text)
+
+    logger.info(f"🔍 Pattern 2 (Basic URLs): Found {len(urls)} URLs")
+
+    for url in set(urls):  # Remove duplicates
+        if url not in [s['url'] for s in sources]:  # Avoid duplicates from pattern 1
+            try:
+                domain = url.split('/')[2] if '/' in url else url
+                sources.append({
+                    'title': f'Research Source - {domain}',
+                    'url': url,
+                    'snippet': 'Source referenced in research'
+                })
+            except:
+                continue
+
+    # Pattern 3: Extract source citations in various formats
+    citation_patterns = [
+        r'Source:\s*(https?://[^\s<>"{}|\\^`\[\]]+)',
+        r'\(Source:\s*(https?://[^\s<>"{}|\\^`\[\]]+)\)',
+        r'Reference:\s*(https?://[^\s<>"{}|\\^`\[\]]+)',
+        r'Link:\s*(https?://[^\s<>"{}|\\^`\[\]]+)',
+        r'URL:\s*(https?://[^\s<>"{}|\\^`\[\]]+)'
+    ]
+
+    citation_count = 0
+    for pattern in citation_patterns:
+        citation_urls = re.findall(pattern, research_text, re.IGNORECASE)
+        citation_count += len(citation_urls)
+        for url in citation_urls:
+            if url not in [s['url'] for s in sources]:  # Avoid duplicates
+                try:
+                    domain = url.split('/')[2] if '/' in url else url
+                    sources.append({
+                        'title': f'Citation - {domain}',
+                        'url': url,
+                        'snippet': 'Cited source in research'
+                    })
+                except:
+                    continue
+
+    logger.info(f"🔍 Pattern 3 (Citations): Found {citation_count} citation URLs")
+    logger.info(f"✅ Total extracted {len(sources)} unique URLs from research text")
+
+    # Log first few sources for debugging
+    if sources:
+        for i, source in enumerate(sources[:3]):
+            logger.info(f"🔍 Source {i+1}: {source['title']} -> {source['url']}")
+
+    return sources
+
+def enrich_research_output(research_output: str, startup_data: dict) -> str:
+    """Enrich research output with additional insights and analysis."""
+    try:
+        from openai import OpenAI
+
+        openai_api_key = os.getenv('OPENAI_API_KEY')
+        if not openai_api_key:
+            return research_output
+
+        client = OpenAI(api_key=openai_api_key)
+
+        startup_name = startup_data.get('startup_name', 'the startup')
+        industry = startup_data.get('industry_type', 'technology')
+
+        prompt = f"""
+        Enhance the following market research output with deeper insights and analysis for {startup_name} in the {industry} industry.
+
+        Add:
+        1. Market size estimates and growth projections
+        2. Competitive landscape analysis
+        3. Key success factors and risks
+        4. Investment opportunities and market timing
+        5. Strategic recommendations
+        6. Industry trends and future outlook
+
+        Keep all original research findings but add valuable insights and analysis.
+
+        Original Research:
+        {research_output}
+
+        Return enhanced research with deeper analysis and insights.
+        """
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1500,
+            temperature=0.6
+        )
+
+        enhanced_research = response.choices[0].message.content
+        logger.info("✅ Research output successfully enriched")
+        return enhanced_research if enhanced_research else research_output
+
+    except Exception as e:
+        logger.error(f"Error enriching research output: {e}")
+        return research_output
+
+def enrich_startup_analysis(startup_data: dict, research_sources: list) -> str:
+    """Generate an enriched startup analysis summary."""
+    try:
+        from openai import OpenAI
+
+        openai_api_key = os.getenv('OPENAI_API_KEY')
+        if not openai_api_key:
+            return create_basic_startup_summary(startup_data, research_sources)
+
+        client = OpenAI(api_key=openai_api_key)
+
+        prompt = f"""
+        Create a comprehensive startup analysis based on the following information:
+
+        Startup Data: {json.dumps(startup_data, indent=2)}
+        Research Sources Available: {len(research_sources)}
+
+        Provide a detailed analysis covering:
+        1. Business Model Viability
+        2. Market Opportunity Assessment
+        3. Competitive Positioning
+        4. Growth Potential
+        5. Risk Assessment
+        6. Investment Attractiveness
+        7. Key Success Factors
+        8. Strategic Recommendations
+
+        Make it professional, data-driven, and investor-focused.
+        """
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1200,
+            temperature=0.6
+        )
+
+        analysis = response.choices[0].message.content
+        logger.info("✅ Startup analysis successfully enriched")
+        return analysis if analysis else create_basic_startup_summary(startup_data, research_sources)
+
+    except Exception as e:
+        logger.error(f"Error creating enriched startup analysis: {e}")
+        return create_basic_startup_summary(startup_data, research_sources)
+
+def create_basic_startup_summary(startup_data: dict, research_sources: list) -> str:
+    """Create a basic startup summary as fallback."""
+    company_name = startup_data.get('startup_name', 'Unknown Company')
+    industry = startup_data.get('industry_type', 'Technology')
+    problem = startup_data.get('key_problem_solved', 'Market challenges')
+    funding = startup_data.get('funding_amount', 'Not specified')
+
+    return f"""
+    **{company_name}** operates in the {industry} industry, focusing on solving {problem}.
+
+    **Key Details:**
+    - Funding Sought: {funding}
+    - Target Market: {startup_data.get('target_market', 'Not specified')}
+    - Research Sources: {len(research_sources)} sources analyzed
+    - Business Model: {startup_data.get('business_model', 'Not specified')}
+
+    This startup is positioned to address significant market opportunities with a focused approach to {problem}.
+    """
+
 def display_results():
     global output_manager, knowledge_agent, content_agent
+    import re  # Import re module at the beginning of the function
+
     # Ensure agents are initialized
     if output_manager is None or knowledge_agent is None or content_agent is None:
         initialize_agents()
@@ -1342,6 +1858,21 @@ def display_results():
             with col2:
                 st.markdown(f"**Generated:** {metadata.get('generated_at', 'Unknown')}")
                 st.markdown(f"**Workflow Status:** {report_data.get('workflow_status', 'Unknown')}")
+
+            # Add enhanced startup analysis section
+            with st.expander("🏢 Enhanced Startup Analysis", expanded=False):
+                startup_data = report_data.get('startup_data', {})
+                research_sources = report_data.get('research_sources', [])
+
+                enrich_analysis = st.checkbox("✨ Generate comprehensive analysis", value=False, help="Create detailed business analysis using AI")
+
+                if enrich_analysis:
+                    with st.spinner("🔄 Generating comprehensive startup analysis..."):
+                        analysis = enrich_startup_analysis(startup_data, research_sources)
+                        st.markdown(analysis)
+                else:
+                    basic_summary = create_basic_startup_summary(startup_data, research_sources)
+                    st.markdown(basic_summary)
 
             st.markdown("---")
 
@@ -1385,84 +1916,176 @@ def display_results():
                 if research_output:
                     st.markdown("#### Web Research Results (SerperDevTool)")
 
+                    # Add option to enrich research content
+                    enrich_research = st.checkbox("✨ Enhance research analysis", value=False, help="Add deeper insights and analysis to research findings")
+
+                    # Enrich research if requested
+                    if enrich_research:
+                        with st.spinner("🔄 Enhancing research analysis..."):
+                            startup_data = report_data.get('startup_data', {})
+                            research_output = enrich_research_output(research_output, startup_data)
+
                     # Debug information (can be removed later)
                     logger.info(f"🔍 Research output length: {len(research_output)}")
                     logger.info(f"📚 Research sources count: {len(research_sources) if research_sources else 0}")
+                    logger.info(f"🔍 Research sources type: {type(research_sources)}")
+                    if research_sources:
+                        logger.info(f"🔍 First research source: {research_sources[0] if len(research_sources) > 0 else 'None'}")
 
-                    # Show structured sources if available
+                    # Show the research output
+                    st.markdown(research_output)
+
+                    # Add debug info for user (can be removed later)
+                    with st.expander("🔧 Debug Info", expanded=False):
+                        st.write(f"Research output length: {len(research_output)}")
+                        st.write(f"Research sources count: {len(research_sources) if research_sources else 0}")
+                        st.write(f"Research sources type: {type(research_sources)}")
+                        if research_sources:
+                            st.write("Sample research source:")
+                            st.json(research_sources[0] if len(research_sources) > 0 else {})
+
+                        # Show raw research data keys
+                        st.write("Available report data keys:")
+                        st.write(list(report_data.keys()))
+
+                    # Extract URLs from research output text using improved extraction
+                    extracted_urls = []
+                    if research_output:
+                        extracted_urls = extract_urls_from_research_text(research_output)
+
+                    # Determine which sources to display
+                    display_sources = []
+                    source_type = ""
+
                     if research_sources and len(research_sources) > 0:
-                        st.markdown("**📚 Sources Found:**")
-                        for i, src in enumerate(research_sources, 1):
-                            # Extract domain for display
-                            try:
-                                domain = src['url'].split('/')[2].replace('www.', '')
-                            except:
-                                domain = src['url']
-
-                            # Create a nice card-like display for each source
-                            st.markdown(f"""
-                            <div style="border-left: 3px solid #4CAF50; padding-left: 15px; margin: 10px 0; background-color: #f8f9fa; padding: 10px; border-radius: 5px;">
-                                <strong>{i}. <a href="{src['url']}" target="_blank" style="color: #1f77b4; text-decoration: none;">{src['title']}</a></strong><br>
-                                <span style="color: #666; font-size: 0.85em;">🔗 {domain}</span><br>
-                                <span style="color: #333; font-size: 0.9em; line-height: 1.4;">{src['snippet']}</span>
-                            </div>
-                            """, unsafe_allow_html=True)
+                        # Use structured sources from API
+                        display_sources = research_sources
+                        source_type = "structured"
+                        logger.info(f"🔍 Using {len(research_sources)} structured sources")
+                    elif extracted_urls and len(extracted_urls) > 0:
+                        # Use extracted URLs from text
+                        display_sources = extracted_urls
+                        source_type = "extracted"
+                        logger.info(f"🔍 Using {len(extracted_urls)} extracted sources")
                     else:
-                        # Enhanced fallback: Try to extract and display links with better formatting
-                        st.markdown("**🔍 Extracting sources from research content...**")
+                        logger.warning("🔍 No sources available to display")
 
-                        # Try to extract URLs from the research output
-                        extracted_sources = extract_urls_from_text(research_output)
-
-                        if extracted_sources:
-                            st.markdown("**📚 Sources Found in Research:**")
-                            for i, src in enumerate(extracted_sources, 1):
-                                # Create a nice card-like display for each extracted source
-                                st.markdown(f"""
-                                <div style="border-left: 3px solid #FF9800; padding-left: 15px; margin: 10px 0; background-color: #fff3e0; padding: 10px; border-radius: 5px;">
-                                    <strong>{i}. <a href="{src['url']}" target="_blank" style="color: #1f77b4; text-decoration: none;">{src['title']}</a></strong><br>
-                                    <span style="color: #666; font-size: 0.85em;">🔗 {src.get('domain', 'External Source')}</span><br>
-                                    <span style="color: #333; font-size: 0.9em; line-height: 1.4;">{src.get('snippet', 'Research source')}</span>
-                                </div>
-                                """, unsafe_allow_html=True)
+                    # Display sources if we have any
+                    if display_sources:
+                        if source_type == "structured":
+                            st.markdown("#### 🔗 Research Sources")
                         else:
-                            # If still no URLs found, do inline URL replacement
-                            st.markdown("**📄 Research Content with Enhanced Links:**")
+                            st.markdown("#### 🔗 Research Sources (Extracted from Text)")
 
-                            import re
-                            # Improved URL pattern to catch more URLs
-                            url_pattern = r'(https?://[^\s\)]+)'
+                        sources_with_urls = 0
+                        for i, src in enumerate(display_sources, 1):
+                            if isinstance(src, dict):
+                                # Try different possible URL keys for structured sources
+                                if source_type == "structured":
+                                    url = src.get('url') or src.get('link') or src.get('href') or src.get('source')
+                                    title = src.get('title', f'Research Source {i}')
+                                    snippet = src.get('snippet', 'Research finding')
+                                else:
+                                    # For extracted sources, keys are standardized
+                                    url = src.get('url')
+                                    title = src.get('title', f'Research Source {i}')
+                                    snippet = src.get('snippet', 'Source found in research')
 
-                            # Process the research output to make URLs clickable
-                            processed_content = research_output
-                            urls_found = re.findall(url_pattern, research_output)
+                                if url and url.startswith('http'):
+                                    sources_with_urls += 1
+                                    try:
+                                        domain = url.split('/')[2] if '/' in url else url
+                                    except:
+                                        domain = url
 
-                            if urls_found:
-                                for url in urls_found:
-                                    clean_url = url.rstrip('.,;:!?)')
-                                    # Replace URL with clickable link
-                                    clickable_link = f'<a href="{clean_url}" target="_blank" style="color: #1f77b4; text-decoration: underline;">{clean_url}</a>'
-                                    processed_content = processed_content.replace(url, clickable_link)
+                                    # Choose border color based on source type
+                                    border_color = "#4CAF50" if source_type == "structured" else "#2196F3"
+                                    bg_color = "#f8f9fa" if source_type == "structured" else "#f0f8ff"
 
-                                st.markdown(processed_content, unsafe_allow_html=True)
-                                st.success(f"✅ Found {len(urls_found)} clickable links in the research content!")
+                                    st.markdown(f"""
+                                    <div style="border-left: 3px solid {border_color}; padding-left: 15px; margin: 10px 0; background-color: {bg_color}; padding: 10px; border-radius: 5px;">
+                                        <strong>{i}. <a href="{url}" target="_blank" style="color: #1f77b4; text-decoration: none;">{title}</a></strong><br>
+                                        <span style="color: #666; font-size: 0.85em;">🔗 {domain}</span><br>
+                                        <span style="color: #333; font-size: 0.9em; line-height: 1.4;">{snippet}</span>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                else:
+                                    # Show source without URL
+                                    st.markdown(f"""
+                                    <div style="border-left: 3px solid #FFA500; padding-left: 15px; margin: 10px 0; background-color: #fff8f0; padding: 10px; border-radius: 5px;">
+                                        <strong>{i}. {title}</strong><br>
+                                        <span style="color: #333; font-size: 0.9em; line-height: 1.4;">{snippet}</span><br>
+                                        <span style="color: #999; font-size: 0.8em;">⚠️ No URL available</span>
+                                    </div>
+                                    """, unsafe_allow_html=True)
                             else:
-                                # No URLs found at all
-                                st.markdown(research_output)
-                                st.warning("⚠️ No URLs were found in the research output. The research agent may need better configuration.")
+                                # Handle non-dict sources
+                                st.markdown(f"**{i}.** {str(src)}")
+
+                        if sources_with_urls > 0:
+                            source_label = "API sources" if source_type == "structured" else "text-extracted sources"
+                            st.success(f"✅ Found {sources_with_urls} research sources with clickable links from {source_label}!")
+                        else:
+                            st.warning("⚠️ Sources found but no clickable URLs available.")
+
+                    else:
+                        st.warning("⚠️ No research sources found. Check your SERPER_API_KEY configuration.")
 
             # Pitch Deck Content Section
-            import re
             pitch_content = report_data.get('pitch_content', 'No content generated')
+
+            # Add content enrichment options (minimal UI change)
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                enrich_all = st.checkbox("✨ Enhance all slides", value=False, help="Use AI to enhance entire pitch deck content")
+            with col2:
+                enrich_individual = st.checkbox("🎯 Enhanced individual slides", value=False, help="Use targeted AI enhancement for each slide type")
+            with col3:
+                enrich_deep = st.checkbox("🚀 Deep content enrichment", value=False, help="Use startup data and research to create rich, detailed content")
+
             with st.expander("📑 View AI-Generated Pitch Deck", expanded=True):
                 if pitch_content and "Slide" in pitch_content:
                     # Split slides by "Slide X:" pattern
                     slides = re.split(r'(?i)\n?Slide \d+:', pitch_content)
                     slide_titles = re.findall(r'(?i)Slide \d+:\s*(.*)', pitch_content)
+
+                    # Get startup context for enrichment
+                    startup_context = report_data.get('startup_data', {})
+
+                    # Enrich all content at once if requested
+                    if enrich_all:
+                        with st.spinner("� Enhancing entire pitch deck content..."):
+                            pitch_content = enrich_pitch_content(pitch_content)
+                            # Re-split the enriched content
+                            slides = re.split(r'(?i)\n?Slide \d+:', pitch_content)
+                            slide_titles = re.findall(r'(?i)Slide \d+:\s*(.*)', pitch_content)
+
+                    # Display slides with optional enrichment
                     for idx, slide in enumerate(slides[1:], 1):  # slides[0] is before first slide
                         title = slide_titles[idx-1] if idx-1 < len(slide_titles) else f"Slide {idx}"
+
+                        # Choose enrichment method (priority: deep > individual > all)
+                        slide_content = slide.strip()
+
+                        if enrich_deep and not enrich_all:  # Deep enrichment with full context
+                            with st.spinner(f"🚀 Deep enriching Slide {idx}: {title.strip()}..."):
+                                slide_content = create_enhanced_slide_content(
+                                    title.strip(),
+                                    slide_content,
+                                    startup_context,
+                                    research_sources
+                                )
+                        elif enrich_individual and not enrich_all and not enrich_deep:  # Targeted enrichment
+                            with st.spinner(f"🎯 Enhancing Slide {idx}: {title.strip()}..."):
+                                slide_content = enrich_individual_slide(
+                                    slide_content,
+                                    title.strip(),
+                                    idx,
+                                    startup_context
+                                )
+
                         st.markdown(f"### Slide {idx}: {title.strip()}")
-                        st.markdown(slide.strip())
+                        st.markdown(slide_content)
                         st.markdown("---")
                 else:
                     st.markdown(pitch_content)
